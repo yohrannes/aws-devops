@@ -1,44 +1,46 @@
 stages:
+    - build
+    - test
     - deploy
 
-deploy:
-    stage: deploy
-    image: 
+build:
+    stage: build
+    image:
       name: amazon/aws-cli
       entrypoint: [""]
-
-    only:
-      - test
-
     script:
     - eval export AWS_ACCESS_KEY_ID=${AUTOSCALE_ACCESS_KEY_ID}
     - eval export AWS_SECRET_ACCESS_KEY=${AUTOSCALE_SECRET_ACCESS_KEY}
     - eval export AWS_DEFAULT_REGION=sa-east-1
-
     - eval export datestr=`date +%Y%m%d-%H%M%S`
     - eval export SERVER_IMG_NAME="ami-autoscale-${datestr}"
-    - eval export LAUNCH_TEMPLATE_NAME="server-template-${datestr}"
 
-    - echo $SERVER_NAME
-
-    # capture updated rserve ec2 server id
+    # Capture updated EC2 server ID
     - EC2_INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${SERVER_NAME}" --query 'Reservations[*].Instances[*].{Instance:InstanceId}' --output text)
 
-    # create an image from updated rserve ec2 server
+    # Create an image from the updated EC2 server
     - IMAGE_ID=$(aws ec2 create-image --instance-id ${EC2_INSTANCE_ID} --name ${SERVER_IMG_NAME} --no-reboot --tag-specifications "ResourceType=image,Tags=[{Key=Name,Value=${SERVER_IMG_NAME}}]" --output text)
 
-    - sleep 30
+    - echo "Created Image ID: ${IMAGE_ID}"
 
-    # parse json launch template 
-    - cat "${SERVER_LAUNCH_TEMPLATE_JSON}" >config.json
+deploy:
+    stage: deploy
+    image:
+      name: amazon/aws-cli
+      entrypoint: [""]
+    script:
+    - eval export LAUNCH_TEMPLATE_NAME="server-template-${datestr}"
+
+    # Parse JSON launch template 
+    - cat "${SERVER_LAUNCH_TEMPLATE_JSON}" > config.json
     - sed -i "s/ami-xxx/${IMAGE_ID}/g" config.json
 
-    # create launch template with image created
+    # Create launch template with the created image
     - aws ec2 create-launch-template --launch-template-name ${LAUNCH_TEMPLATE_NAME} --version-description version1 --launch-template-data file://config.json
 
-    # update autoscaling with the template create
+    # Update autoscaling with the created template
     - aws autoscaling update-auto-scaling-group --auto-scaling-group-name ${AUTOSCALE_NAME} --launch-template LaunchTemplateName=${LAUNCH_TEMPLATE_NAME},Version='1'
 
-    - echo "AutoScaling Group = " ${AUTOSCALE_NAME}
-    - echo "Template Name     = " ${LAUNCH_TEMPLATE_NAME}
-    - echo "Update with Image = " ${IMAGE_ID} " (" ${EC2_INSTANCE_ID} ")"
+    - echo "AutoScaling Group = ${AUTOSCALE_NAME}"
+    - echo "Template Name     = ${LAUNCH_TEMPLATE_NAME}"
+    - echo "Updated with Image = ${IMAGE_ID} (Instance ID ${EC2_INSTANCE_ID})"
