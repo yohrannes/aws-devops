@@ -1,0 +1,6 @@
+{ 
+    "ImageId":"ami-xxx",
+    "InstanceType":"t3a.micro",
+    "NetworkInterfaces":[{"DeviceIndex":0,"AssociatePublicIpAddress":true,"Groups":["sg-xxxx","sg-xxxx"],"DeleteOnTermination":true}],
+    "KeyName": "key-name"
+}
