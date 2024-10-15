@@ -21,7 +21,7 @@ build:
     # Create an image from the updated EC2 server
     - IMAGE_ID=$(aws ec2 create-image --instance-id ${EC2_INSTANCE_ID} --name ${SERVER_IMG_NAME} --no-reboot --tag-specifications "ResourceType=image,Tags=[{Key=Name,Value=${SERVER_IMG_NAME}}]" --output text)
 
-    - echo "Created Image ID: ${IMAGE_ID}"
+    - echo "Created Image ID ${IMAGE_ID}"
 
 deploy:
     stage: deploy
