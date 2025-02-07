@@ -1,0 +1,2 @@
+## Check aws cli account autentication
+aws sts get-caller-identity
